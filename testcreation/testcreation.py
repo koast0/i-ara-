@@ -2,8 +2,8 @@ import subprocess
 import resource
 
 
-for i in range(1, 14):
-	size = i*4;
+for i in range(1, 22):
+	size = i*10;
 	f = open("tests/data"+str(i)+'.txt', 'w')
 	way = "tests/data"+str(i)+'.txt'
 	res = "tests/lab"+str(i)+'.txt'
