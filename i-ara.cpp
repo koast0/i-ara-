@@ -18,10 +18,10 @@ const int inf = 1e8+7;
 vector <vector<int>> graph;
 //Возможные соседи в лабиринте
 vector<pair<int, int>> neigh = {m_p(0, 1), m_p(0, -1), m_p(1, 0), m_p(-1, 0)};
-
-double eps = 1.7;
+double eps_max = 1.8;
+double eps = eps_max;
 //Начальный эпсилон I-ARA*
-double eps_max = 1.7;
+
 //Шаг I-ara*
 double step = 0.3;
 // числа вершин лабиринта, переменные старта, последней посещеной
@@ -29,13 +29,14 @@ int size, start, goal, last_start;
 //Размер лабиринта. Изменяется после ввода.
 int n =0;
 int m = 0;
+int path_len=inf;
+int old_goal = inf;
 //Логи для визувлизации
 ofstream logging;
 ofstream paths;
 ofstream opens;
 ofstream closes;
 ofstream inconses;
-int path_cur = 1;
 //Пересенная времени работы
 clock_t time_cur;
 // Вектора v-value и g-value для вершин графа
@@ -62,7 +63,7 @@ int Heruestic(int x, int y) {
     int y_y = y/n;
     return (abs(x_x-y_x) + abs(x_y-y_y));
 }
-// Вычисление приоритета вершины (евристики на итерации)
+// Вычисление приоритета вершины (эвристики на итерации)
 double GetPriority(int i) {
     return min((double) inf, g[i] + eps*Heruestic(i, goal));
 }
@@ -123,19 +124,25 @@ void GetGraphFromTXT(const char* name) {
 }
 // Итерация алгоритма ARA*
 bool ImprovePath() {
-    while (GetPriority(goal) > GetPriority(OPEN.begin()->id)) {
+    while (OPEN.size() and GetPriority(goal) > GetPriority(OPEN.begin()->id)) {
         SetElem s = *OPEN.begin();
         CLOSED.insert(s);
-        OPEN.erase(s);
+        OPEN.erase(OPEN.begin());
         v[s.id] = g[s.id];
         for(auto new_s: graph[s.id]) {
             if (g[new_s] > v[s.id] + 1) {
                 parents[new_s] = s.id;
-                if (CLOSED.find(SetElem(new_s)) == CLOSED.end()) {
-                    if (OPEN.find(SetElem(new_s)) == OPEN.end() and INCONS.find(SetElem(new_s)) == INCONS.end()) {
-                        g[new_s] = v[s.id] + 1;
-                        OPEN.insert(SetElem(new_s));
+                auto next = SetElem(new_s);
+                if (CLOSED.find(next) == CLOSED.end()) {
+                    OPEN.erase(next);
+                    g[new_s] = v[s.id] + 1;
+                    if (INCONS.find(next) == INCONS.end()) {
+                    	OPEN.insert(SetElem(new_s));
+                    } else {
+                    	INCONS.erase(next);
+                    	INCONS.insert(SetElem(new_s));
                     }
+
                 } else {
                     CLOSED.erase(SetElem(new_s));
                     g[new_s] = v[s.id] + 1; 
@@ -154,16 +161,16 @@ bool ImprovePath() {
 //Функция, обновляющаяя приоритеты выбраного множества SetElem
 void UpdatePriorities(set<SetElem>& s) {
 
-    static set<SetElem> save;
-    save.clear();
+    set<SetElem> save;
     for (auto i:s) {
         save.insert(SetElem(i.id));
     }
-    s.clear();
-    for (auto i:save) {
-        s.insert(i);
-    }
+    s = save;
 }
+
+
+
+
 // Функция, запускающая итерацию ARA*, меняя при этом эпсилон итерации
 bool ComputePath() {
     while(true) {
@@ -172,12 +179,11 @@ bool ComputePath() {
             return false;
         }
         if (eps == 1) {
-            // cout << CLOSED.size()<<endl;
             return true;
         }
         OPEN.insert(INCONS.begin(), INCONS.end());
         INCONS.clear();
-        CLOSED.clear();
+        CLOSED.clear(	);
         eps = fmax(1, eps-step);
         UpdatePriorities(OPEN);
     }
@@ -239,6 +245,7 @@ void Step3() {
 
 // Получаем эпсилон для следующей итерации. 
 void Step4() {
+
     if (GetPriority(goal) > OPEN.begin()->priority) {
         eps = eps_max;
     }
@@ -257,6 +264,7 @@ bool GetCurentPath() {
         paths << current<<' ' ;
         path.push_back(current);
     }
+    path_len = path.size();
 }
 //Генерируем движение цели
 inline int GetNextGoal(int goal) {
@@ -272,37 +280,35 @@ bool StartIAra() {
     // Запускаем алгоритм
     g[start] = 0;
     OPEN.insert(SetElem(start));
-    closes << endl;
     while (start!=goal) {
 
         time_cur = clock();
         logging <<start<<' ' <<goal<<endl;
-        for (auto i:OPEN) {
-            opens << i.id <<' ';
-        }
-        opens <<endl;
+
         if (ComputePath() == false) {
             return false;
         }
         //Получаем найденый путь
+        
         GetCurentPath();
         paths<<'\n';
         last_start = start;
         start = *(path.rbegin()+1);
-        int old_goal = goal;
+        old_goal = goal;
         goal = GetNextGoal(goal);
         if (start == goal) {
             break;
         }
-        path_cur = 1;
         UpdatePriorities(OPEN);
-        
         Step1();
         Step2();
         Step3();
         Step4();
+        for (auto i:OPEN) {
+            opens << i.id <<' ';
+        }
+        opens <<endl;
         
-        //cout<<OPEN.size()<<' ';
         times.push_back(clock()-time_cur);
     }
 }
