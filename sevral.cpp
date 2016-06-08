@@ -31,6 +31,7 @@ int n =0;
 //Текстовый граф 
 vector<string> lab;
 int m = 0;
+int total = 0;
 int path_len=inf;
 int old_goal = inf;
 //Логи для визувлизации
@@ -185,7 +186,7 @@ bool ComputePath() {
         }
         OPEN.insert(INCONS.begin(), INCONS.end());
         INCONS.clear();
-        CLOSED.clear(	);
+        CLOSED.clear();
         eps = fmax(1, eps-step);
         UpdatePriorities(OPEN);
     }
@@ -235,11 +236,11 @@ void Step3() {
         }
     }
     UpdatePriorities(INCONS);
-    OPEN.insert(INCONS.begin(), INCONS.end());
-    for (auto i:CLOSED) {
-        closes << i.id <<' ';
-    }
-    closes << endl;
+    // OPEN.insert(INCONS.begin(), INCONS.end());
+    // for (auto i:CLOSED) {
+    //     closes << i.id <<' ';
+    // }
+    // closes << endl;
     CLOSED.clear();
     INCONS.clear();
     DELETED.clear();
@@ -301,7 +302,6 @@ bool StartIAra() {
     while (start!=goal) {
 
         time_cur = clock();
-        logging <<start<<' ' <<goal<<endl;
 
         if (ComputePath() == false) {
             return false;
@@ -309,23 +309,34 @@ bool StartIAra() {
         //Получаем найденый путь
         
         GetCurentPath();
-        paths<<'\n';
-        last_start = start;
-        start = *(path.rbegin()+1);
         old_goal = goal;
-        goal = GetNextGoal(goal);
+        last_start = start;
+        paths<<'\n';
+        int old_path = path.size()/10+1;
+        auto next_start = path.rbegin();
+        while (old_path!=0 and start!=goal) {
+        	++next_start;
+        	if (next_start==path.rend())
+        		break;
+        	
+        	start=*next_start;
+        	++total;
+        	goal = GetNextGoal(goal);
+        	--old_path;
+        }
         if (start == goal) {
             break;
         }
+        logging <<start<<' ' <<goal<<endl;
         UpdatePriorities(OPEN);
         Step1();
         Step2();
         Step3();
         Step4();
-        for (auto i:OPEN) {
-            opens << i.id <<' ';
-        }
-        opens <<endl;
+        // for (auto i:OPEN) {
+        //     opens << i.id <<' ';
+        // }
+        // opens <<endl;
         
         times.push_back(clock()-time_cur);
     }
@@ -344,18 +355,15 @@ int main(int argc, char** argv) {
     //Запись в логи
     logging.open("log.txt");
     paths.open("paths.txt");
-    opens.open("opens.txt");
-    closes.open("closes.txt");
-    inconses.open("inconses.txt");
+    // opens.open("opens.txt");
+    // closes.open("closes.txt");
+    // inconses.open("inconses.txt");
 
     StartIAra();
-    opens <<endl;
+    // opens <<endl;
     logging <<start<<' ' <<goal<<endl;
-    closes << endl;
-    // for (auto i:times) {
-    //     cout <<((double)i)/CLOCKS_PER_SEC<<' ';
-    // }
-    cout << times.size()<<endl;
+    // closes << endl;
+    cout << total <<endl;
     cout<<endl<<(double)sum(times)/CLOCKS_PER_SEC;
     return 0;
 }

@@ -12,13 +12,14 @@
 #define m_p(a, b) make_pair(a, b)
 using namespace std;
 const int inf = 1e8+7;
+vector<string> lab;
 
 //Исходный граф
 vector <vector<int>> graph;
 //Возможные соседи в лабиринте
 vector<pair<int, int>> neigh = {m_p(0, 1), m_p(0, -1), m_p(1, 0), m_p(-1, 0)};
 // числа вершин лабиринта, переменные старта, последней посещеной
-int size, start, goal, last_start;
+int size, start, goal, last_start, old_goal;
 //Размер лабиринта. Изменяется после ввода.
 int n =0;
 int m = 0;
@@ -35,7 +36,7 @@ vector<int> path;
 //Времена работы итераций
 vector<int> times;
 //
-random_device rd;
+mt19937 rd(2016);
 
 
 int GetIndex(int x, int y) {
@@ -45,7 +46,7 @@ int GetIndex(int x, int y) {
 void GetGraphFromTXT(const char* name) {
     ifstream myfile (name);
     string input;
-    vector<string> lab;
+    
     while (getline (myfile, input)) {
         lab.push_back(input);
         m = max(m, (int) input.size());
@@ -115,50 +116,65 @@ void UpdatePriorities(set<SetElem>& s) {
         s.insert(i);
     }
 }
+char GetSell(int ind) {
+    return lab[ind/m][ind%n];
+}
 
 //Генерируем движение цели
 inline int GetNextGoal(int goal) {
+    static set<int> visited;
+    visited.insert(goal);
+    if (goal-1>0 and goal-1<size and GetSell(goal-1) == '.' and !visited.count(goal-1)==1) {
+        return goal-1;
+    } else if (goal-n>0 and goal-n<size and GetSell(goal-n) =='.' and !visited.count(goal-n)==1) {
+        return goal-n;
+    } else if (goal+1>0 and goal+1<size and GetSell(goal+1) == '.' and !visited.count(goal+1)==1) {
+        return goal+1;
+    } else if (goal+n>0 and goal+n<size and GetSell(goal+n) == '.' and !visited.count(goal+n)==1) {
+        return goal+n;
+    }
     return graph[goal][rd()%graph[goal].size()];
 }
 
 int AStar() {
-	int cur =start;
+    fill(g.begin(), g.end(), inf);
+    g[start] = 0;
 	S.clear();
-	vector<int> parents(size);
-    vector<char> used(size);
+	vector<int> parents(size, -1);
 	S.insert(SetElem(start));
-	while (cur!=goal){
+	while (true){
 		auto next = S.begin()->id;
-        if(used[next]) {
-            continue;
-        }
-        used[next] =true;
-		S.erase(S.begin());
+        S.erase(S.begin());
 		for (auto i:graph[next]) {
-			if (g[i]>g[next]+1) {
+			if (g[i]==inf) {
 				g[i]=g[next]+1;
 				S.insert(SetElem(i));
+                parents[i]=next;
 			}
 		}
-		parents[next]=cur;
-		cur = next;
+        if (next==goal){ 
+            break;
+        }
 	}
 	int it = goal;
 	int res;
+    path.clear();
 	while (it!=start) {
 		res = it;
 		it = parents[it];
-		cout << start<<' '<< it<<endl;
+        path.push_back(it);
 	}
+    // cout <<start<<' '<< res <<' '<< goal<<endl;
 	return res;
 }
 
 int StartA() {
 	g.resize(size, inf);
-	g[start] = 0;
 	while (start != goal) {
 		time_cur = clock();
+        last_start = start;
 		start = AStar();
+        old_goal = goal;
 		goal = GetNextGoal(goal);
 		times.push_back(clock()-time_cur);
 	}
@@ -175,9 +191,10 @@ int sum(vector<int> &v) {
 int main(int argc, char** argv) {
     GetGraphFromTXT(argv[1]);
  	StartA();
-    for (auto i:times) {
-        cout <<((double)i)/CLOCKS_PER_SEC<<' ';
-    }
+    // for (auto i:times) {
+    //     cout <<((double)i)/CLOCKS_PER_SEC<<' ';
+    // }
+    cout << times.size()<<endl;
     cout<<endl<<(double)sum(times)/CLOCKS_PER_SEC;
     return 0;
 }
